@@ -5,6 +5,9 @@ from db.session import engine
 from db.models import Base
 from db.session import SessionLocal
 from db.seed import seed_data
+import threading
+import time
+from services.meter_simulator import generate_reading
 
 Base.metadata.create_all(bind=engine)
 
@@ -23,3 +26,13 @@ def startup_event():
     db = SessionLocal()
     seed_data(db)
     db.close()
+
+def meter_loop():
+    while True:
+        generate_reading()
+        time.sleep(15)  # demo speed (15 sec instead of 15 min)
+
+@app.on_event("startup")
+def start_simulator():
+    thread = threading.Thread(target=meter_loop, daemon=True)
+    thread.start()

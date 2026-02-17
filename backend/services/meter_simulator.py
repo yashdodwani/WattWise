@@ -1,27 +1,25 @@
-"""
-Dummy meter data generator for development and testing.
-Provides a simple generator function that yields fake readings.
-"""
-from typing import Iterator
-from dataclasses import dataclass
-import datetime
 import random
+from datetime import datetime
+from db.session import SessionLocal
+from db.models import Meter, MeterReading
 
+def generate_reading():
+    db = SessionLocal()
 
-@dataclass
-class MeterReading:
-    timestamp: datetime.datetime
-    watts: float
+    meter = db.query(Meter).first()
+    if not meter:
+        db.close()
+        return
 
+    # simulate realistic home load (0.1 to 0.6 kWh per 15 min)
+    energy = round(random.uniform(0.1, 0.6), 3)
 
-def generate_readings(start: datetime.datetime, count: int) -> Iterator[MeterReading]:
-    """Yield `count` fake meter readings spaced 15 seconds apart (placeholder)."""
-    for i in range(count):
-        yield MeterReading(timestamp=start + datetime.timedelta(seconds=15 * i), watts=random.random() * 1000)
+    reading = MeterReading(
+        meter_id=meter.id,
+        timestamp=datetime.utcnow(),
+        energy_kwh=energy
+    )
 
-
-if __name__ == "__main__":
-    # Quick smoke run
-    for r in generate_readings(datetime.datetime.utcnow(), 5):
-        print(r)
-
+    db.add(reading)
+    db.commit()
+    db.close()
