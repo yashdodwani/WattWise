@@ -47,7 +47,9 @@ class Appliance(Base):
 
     name = Column(String)
     power_kw = Column(Float)
+
     is_on = Column(Boolean, default=False)
+    last_started_at = Column(DateTime, nullable=True)
 
     user = relationship("User", back_populates="appliances")
 
@@ -70,3 +72,13 @@ class Schedule(Base):
     appliance_id = Column(Integer, ForeignKey("appliances.id"))
     start_time = Column(DateTime)
     end_time = Column(DateTime)
+
+class ApplianceUsage(Base):
+    __tablename__ = "appliance_usage"
+
+    id = Column(Integer, primary_key=True, index=True)
+    appliance_id = Column(Integer, ForeignKey("appliances.id"))
+
+    start_time = Column(DateTime)
+    end_time = Column(DateTime)
+    energy_kwh = Column(Float)
