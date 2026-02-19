@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from db.session import get_db
-from db.models import MeterReading
+from db.models import MeterReading, Tariff
 from sqlalchemy import desc
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from services.tariff_service import calculate_today_cost
 
 IST = ZoneInfo("Asia/Kolkata")
 
@@ -40,14 +41,20 @@ def get_live_meter(db: Session = Depends(get_db)):
         for r in readings
     ]
 
-    # today usage
+    # today usage and cost
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     today_readings = db.query(MeterReading).filter(MeterReading.timestamp >= today_start).all()
-    today_usage = sum(r.energy_kwh for r in today_readings)
+
+    # Get tariffs for cost calculation
+    tariff_rows = db.query(Tariff).all()
+
+    # Use official tariff service function
+    today_stats = calculate_today_cost(today_readings, tariff_rows)
 
     return {
         "current_kwh": latest.energy_kwh,
         "current_kw": round(latest.energy_kwh * 4, 2),  # 15min → kW approx
-        "today_kwh": round(today_usage, 3),
+        "today_kwh": today_stats["today_kwh"],
+        "today_cost": today_stats["today_cost"],
         "graph": graph
     }
