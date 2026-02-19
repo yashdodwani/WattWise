@@ -116,16 +116,14 @@ def today_cost(db: Session = Depends(get_db)):
     Response:
         {"today_kwh": 14.2, "today_cost": 72.35}
     """
-    # Midnight IST today
+    # Midnight IST today (timestamps are now stored in IST)
     today_ist   = datetime.datetime.now(tz=IST).replace(
         hour=0, minute=0, second=0, microsecond=0
-    )
-    # Convert to UTC for DB query (timestamps stored as UTC in SQLAlchemy)
-    today_utc   = today_ist.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+    ).replace(tzinfo=None)  # Remove timezone info for SQLAlchemy comparison
 
     readings = (
         db.query(MeterReading)
-        .filter(MeterReading.timestamp >= today_utc)
+        .filter(MeterReading.timestamp >= today_ist)
         .all()
     )
     tariffs  = _get_tariffs(db)

@@ -1,6 +1,12 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime, Time
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
+IST = ZoneInfo("Asia/Kolkata")
+
+def now_ist():
+    return datetime.now(IST)
 
 Base = declarative_base()
 
@@ -32,7 +38,7 @@ class MeterReading(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     meter_id = Column(Integer, ForeignKey("meters.id"))
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=now_ist)
     energy_kwh = Column(Float)
 
     meter = relationship("Meter", back_populates="readings")

@@ -4,6 +4,12 @@ from db.session import get_db
 from db.models import Appliance
 from datetime import datetime, timedelta
 from db.models import ApplianceUsage
+from zoneinfo import ZoneInfo
+
+IST = ZoneInfo("Asia/Kolkata")
+
+def now_ist():
+    return datetime.now(IST)
 
 router = APIRouter(prefix="/appliances", tags=["Appliances"])
 
@@ -33,7 +39,7 @@ def turn_on(appliance_id: int, db: Session = Depends(get_db)):
         return {"message": "Already ON"}
 
     appliance.is_on = True
-    appliance.last_started_at = datetime.utcnow()
+    appliance.last_started_at = now_ist()
 
     db.commit()
 
@@ -46,7 +52,7 @@ def turn_off(appliance_id: int, db: Session = Depends(get_db)):
     if not appliance or not appliance.is_on:
         return {"error": "Appliance not running"}
 
-    end_time = datetime.utcnow()
+    end_time = now_ist()
     duration_hours = (end_time - appliance.last_started_at).total_seconds() / 3600
 
     energy_used = round(appliance.power_kw * duration_hours, 3)
@@ -71,7 +77,7 @@ def turn_off(appliance_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{appliance_id}/usage")
 def appliance_usage(appliance_id: int, db: Session = Depends(get_db)):
-    today = datetime.utcnow().date()
+    today = now_ist().date()
 
     usages = db.query(ApplianceUsage).filter(
         ApplianceUsage.appliance_id == appliance_id,
