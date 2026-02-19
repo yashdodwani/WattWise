@@ -1,10 +1,10 @@
 import random
 from datetime import datetime
-import pytz
+from zoneinfo import ZoneInfo
 from db.session import SessionLocal
 from db.models import Meter, MeterReading
 
-IST = pytz.timezone("Asia/Kolkata")
+IST = ZoneInfo("Asia/Kolkata")
 
 def generate_reading():
     db = SessionLocal()
