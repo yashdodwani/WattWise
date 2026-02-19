@@ -17,9 +17,14 @@ def seed_data(db: Session):
     db.add(meter)
 
     appliances = [
+        Appliance(user_id=user.id, name="Air Conditioner", power_kw=1.45),
         Appliance(user_id=user.id, name="Washing Machine", power_kw=0.5),
-        Appliance(user_id=user.id, name="Air Conditioner", power_kw=1.5),
-        Appliance(user_id=user.id, name="Water Heater", power_kw=2.0),
+        Appliance(user_id=user.id, name="Refrigerator", power_kw=0.12),
+        Appliance(user_id=user.id, name="Geyser", power_kw=2.0),
+        Appliance(user_id=user.id, name="Television", power_kw=0.08),
+        Appliance(user_id=user.id, name="Living Room Lights", power_kw=0.04),
+        Appliance(user_id=user.id, name="Ceiling Fan", power_kw=0.07),
+        Appliance(user_id=user.id, name="Microwave", power_kw=1.2),
     ]
     db.add_all(appliances)
 
