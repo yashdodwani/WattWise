@@ -1,7 +1,10 @@
 import random
 from datetime import datetime
+import pytz
 from db.session import SessionLocal
 from db.models import Meter, MeterReading
+
+IST = pytz.timezone("Asia/Kolkata")
 
 def generate_reading():
     db = SessionLocal()
@@ -16,7 +19,7 @@ def generate_reading():
 
     reading = MeterReading(
         meter_id=meter.id,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(IST),
         energy_kwh=energy
     )
 

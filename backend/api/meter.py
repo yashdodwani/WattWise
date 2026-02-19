@@ -4,6 +4,9 @@ from db.session import get_db
 from db.models import MeterReading
 from sqlalchemy import desc
 from datetime import datetime, timedelta
+import pytz
+
+IST = pytz.timezone("Asia/Kolkata")
 
 router = APIRouter(prefix="/meter", tags=["Meter"])
 
@@ -20,7 +23,8 @@ def get_live_meter(db: Session = Depends(get_db)):
         return {"message": "No readings yet"}
 
     # last 60 minutes graph
-    one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+    now = datetime.now(IST)
+    one_hour_ago = now - timedelta(hours=1)
     readings = (
         db.query(MeterReading)
         .filter(MeterReading.timestamp >= one_hour_ago)
@@ -29,12 +33,12 @@ def get_live_meter(db: Session = Depends(get_db)):
     )
 
     graph = [
-        {"time": r.timestamp.isoformat(), "kwh": r.energy_kwh}
+        {"time": (IST.localize(r.timestamp) if r.timestamp.tzinfo is None else r.timestamp.astimezone(IST)).isoformat(), "kwh": r.energy_kwh}
         for r in readings
     ]
 
     # today usage
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     today_readings = db.query(MeterReading).filter(MeterReading.timestamp >= today_start).all()
     today_usage = sum(r.energy_kwh for r in today_readings)
 
