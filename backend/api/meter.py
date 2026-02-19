@@ -58,3 +58,4 @@ def get_live_meter(db: Session = Depends(get_db)):
         "today_cost": today_stats["today_cost"],
         "graph": graph
     }
+
