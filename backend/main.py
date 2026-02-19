@@ -1,4 +1,5 @@
 from fastapi import FastAPI,Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from db.session import get_db
 from db.session import engine
@@ -15,6 +16,16 @@ from services.meter_simulator import generate_reading
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="wattwise backend")
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(meter_router)
 app.include_router(tariff_router)
 app.include_router(appliances_router)
