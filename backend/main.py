@@ -11,6 +11,7 @@ import time
 from api.meter import router as meter_router
 from api.appliances import router as appliances_router
 from api.tariffs import router as tariff_router
+from api.dashboard import router as dashboard_router    # ← ADD THIS LINE
 from services.meter_simulator import generate_reading
 
 Base.metadata.create_all(bind=engine)
@@ -29,6 +30,8 @@ app.add_middleware(
 app.include_router(meter_router)
 app.include_router(tariff_router)
 app.include_router(appliances_router)
+app.include_router(dashboard_router)    # ← ADD THIS LINE
+
 @app.get("/")
 def health_check():
     return {"status":"wattwise backend is running"}
