@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from db.session import get_db
 from db.models import Appliance, User
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/appliances", tags=["Appliances"])
 
 @router.get("/")
 def list_appliances(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    appliances = db.query(Appliance).all()
+    appliances = db.query(Appliance).filter(Appliance.user_id == current_user.id).all()
 
     return [
         {
@@ -33,8 +33,8 @@ def list_appliances(db: Session = Depends(get_db), current_user: User = Depends(
 def turn_on(appliance_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     appliance = db.query(Appliance).get(appliance_id)
 
-    if not appliance:
-        return {"error": "Appliance not found"}
+    if not appliance or appliance.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     if appliance.is_on:
         return {"message": "Already ON"}
@@ -50,8 +50,8 @@ def turn_on(appliance_id: int, db: Session = Depends(get_db), current_user: User
 def turn_off(appliance_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     appliance = db.query(Appliance).get(appliance_id)
 
-    if not appliance or not appliance.is_on:
-        return {"error": "Appliance not running"}
+    if not appliance or appliance.user_id != current_user.id or not appliance.is_on:
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     end_time = now_ist()
     duration_hours = (end_time - appliance.last_started_at).total_seconds() / 3600
@@ -78,6 +78,10 @@ def turn_off(appliance_id: int, db: Session = Depends(get_db), current_user: Use
 
 @router.get("/{appliance_id}/usage")
 def appliance_usage(appliance_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    appliance = db.query(Appliance).get(appliance_id)
+    if not appliance or appliance.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     today = now_ist().date()
 
     usages = db.query(ApplianceUsage).filter(

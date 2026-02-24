@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 IST = ZoneInfo("Asia/Kolkata")
 
 # ==================== CONFIG ====================
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")  # Use env var in production, dev fallback
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 OTP_EXPIRE_MINUTES = 10  # 10 minutes

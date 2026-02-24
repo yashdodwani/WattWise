@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from db.session import get_db
 from db.models import MeterReading, Meter, User
@@ -16,8 +16,15 @@ router = APIRouter(prefix="/meter", tags=["Meter"])
 
 @router.get("/readings")
 def get_meter_readings(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Get all meter readings"""
-    readings = db.query(MeterReading).all()
+    """Get all meter readings for current user"""
+    # Fetch meter ids owned by the user
+    meters = db.query(Meter).filter(Meter.user_id == current_user.id).all()
+    meter_ids = [m.id for m in meters]
+
+    if not meter_ids:
+        return []
+
+    readings = db.query(MeterReading).filter(MeterReading.meter_id.in_(meter_ids)).all()
 
     return [
         {
@@ -32,7 +39,11 @@ def get_meter_readings(db: Session = Depends(get_db), current_user: User = Depen
 
 @router.get("/readings/{meter_id}")
 def get_meter_readings_by_id(meter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Get readings for a specific meter"""
+    """Get readings for a specific meter (must belong to current user)"""
+    meter = db.query(Meter).filter(Meter.id == meter_id).first()
+    if not meter or meter.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     readings = db.query(MeterReading).filter(MeterReading.meter_id == meter_id).all()
 
     if not readings:
@@ -51,7 +62,11 @@ def get_meter_readings_by_id(meter_id: int, db: Session = Depends(get_db), curre
 
 @router.get("/today-usage/{meter_id}")
 def get_today_usage(meter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Get today's energy usage for a meter"""
+    """Get today's energy usage for a meter (must belong to current user)"""
+    meter = db.query(Meter).filter(Meter.id == meter_id).first()
+    if not meter or meter.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     today_start = datetime.combine(now_ist().date(), datetime.min.time()).replace(tzinfo=IST)
     today_end = now_ist()
 
@@ -73,7 +88,11 @@ def get_today_usage(meter_id: int, db: Session = Depends(get_db), current_user: 
 
 @router.get("/weekly-usage/{meter_id}")
 def get_weekly_usage(meter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Get weekly energy usage for a meter"""
+    """Get weekly energy usage for a meter (must belong to current user)"""
+    meter = db.query(Meter).filter(Meter.id == meter_id).first()
+    if not meter or meter.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     today = now_ist()
     week_start = today - timedelta(days=7)
 
@@ -96,7 +115,11 @@ def get_weekly_usage(meter_id: int, db: Session = Depends(get_db), current_user:
 
 @router.get("/monthly-usage/{meter_id}")
 def get_monthly_usage(meter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Get monthly energy usage for a meter"""
+    """Get monthly energy usage for a meter (must belong to current user)"""
+    meter = db.query(Meter).filter(Meter.id == meter_id).first()
+    if not meter or meter.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     today = now_ist()
     month_start = today.replace(day=1)
 
