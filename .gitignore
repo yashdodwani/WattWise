@@ -1,13 +1,37 @@
 .env
 venv/
 ww/
+vnv/
+.idea/
+
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+
+# virtual env
+.venv/
+
+env/
+
+# build artifacts
+dist/
+build/
+*.egg-info
+
+# IDE
+.vscode/
+
+
+# OS
+.DS_Store
+Thumbs.db
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
 ww/
+

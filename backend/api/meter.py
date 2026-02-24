@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from db.session import get_db
-from db.models import MeterReading, Meter, User
+from db.models import MeterReading, Meter, User, Tariff
 from api.auth import get_current_user
+from sqlalchemy import desc
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from services.tariff_service import calculate_today_cost
 
 IST = ZoneInfo("Asia/Kolkata")
 
@@ -12,6 +14,84 @@ def now_ist():
     return datetime.now(IST)
 
 router = APIRouter(prefix="/meter", tags=["Meter"])
+
+
+@router.get("/live")
+def get_live_meter(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Get live meter data with graph for current user"""
+    # Get meters belonging to current user
+    meters = db.query(Meter).filter(Meter.user_id == current_user.id).all()
+    meter_ids = [m.id for m in meters]
+
+    if not meter_ids:
+        return {
+            "current_kwh": 0,
+            "current_kw": 0,
+            "today_kwh": 0,
+            "today_cost": 0,
+            "graph": [],
+            "message": "No meters found for this user"
+        }
+
+    # Get latest reading across all user's meters
+    latest = (
+        db.query(MeterReading)
+        .filter(MeterReading.meter_id.in_(meter_ids))
+        .order_by(desc(MeterReading.timestamp))
+        .first()
+    )
+
+    if not latest:
+        return {
+            "current_kwh": 0,
+            "current_kw": 0,
+            "today_kwh": 0,
+            "today_cost": 0,
+            "graph": [],
+            "message": "No readings yet"
+        }
+
+    # Last 60 minutes graph
+    now = now_ist()
+    one_hour_ago = now - timedelta(hours=1)
+    readings = (
+        db.query(MeterReading)
+        .filter(
+            MeterReading.meter_id.in_(meter_ids),
+            MeterReading.timestamp >= one_hour_ago
+        )
+        .order_by(MeterReading.timestamp)
+        .all()
+    )
+
+    graph = [
+        {
+            "time": (r.timestamp.replace(tzinfo=IST) if r.timestamp.tzinfo is None else r.timestamp.astimezone(IST)).isoformat(),
+            "kwh": r.energy_kwh
+        }
+        for r in readings
+    ]
+
+    # Today's usage and cost
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_readings = db.query(MeterReading).filter(
+        MeterReading.meter_id.in_(meter_ids),
+        MeterReading.timestamp >= today_start
+    ).all()
+
+    # Get tariffs for cost calculation
+    tariff_rows = db.query(Tariff).all()
+
+    # Use official tariff service function
+    today_stats = calculate_today_cost(today_readings, tariff_rows)
+
+    return {
+        "current_kwh": latest.energy_kwh,
+        "current_kw": round(latest.energy_kwh * 4, 2),  # 15min → kW approx
+        "today_kwh": today_stats["today_kwh"],
+        "today_cost": today_stats["today_cost"],
+        "graph": graph
+    }
 
 
 @router.get("/readings")

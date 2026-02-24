@@ -11,7 +11,7 @@ All 6 endpoints:
 Tariffs are fetched from DB once per request and passed to service functions.
 """
 
-import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends
@@ -29,7 +29,7 @@ from services.tariff_service import (
     find_cheapest_slot,
 )
 
-IST    = ZoneInfo("Asia/Kolkata")
+IST = ZoneInfo("Asia/Kolkata")
 router = APIRouter(prefix="/tariffs", tags=["Tariffs"])
 
 
@@ -38,27 +38,33 @@ router = APIRouter(prefix="/tariffs", tags=["Tariffs"])
 # --------------------------------------------------------------------------- #
 
 class SimulateRequest(BaseModel):
-    power_kw        : float
+    power_kw: float
     duration_minutes: int
-    start_time      : str   # "HH:MM"
+    start_time: str   # "HH:MM"
 
-    model_config = {"json_schema_extra": {
-        "example": {"power_kw": 1.5, "duration_minutes": 60, "start_time": "23:00"}
-    }}
+    model_config = {
+        "json_schema_extra": {
+            "example": {"power_kw": 1.5, "duration_minutes": 60, "start_time": "23:00"}
+        }
+    }
 
 
 class CheapestSlotRequest(BaseModel):
-    power_kw        : float
+    power_kw: float
     duration_minutes: int
-    window_start    : str   # "HH:MM"
-    window_end      : str   # "HH:MM"
+    window_start: str   # "HH:MM"
+    window_end: str     # "HH:MM"
 
-    model_config = {"json_schema_extra": {
-        "example": {
-            "power_kw": 2, "duration_minutes": 60,
-            "window_start": "18:00", "window_end": "06:00"
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "power_kw": 2, 
+                "duration_minutes": 60,
+                "window_start": "18:00", 
+                "window_end": "06:00"
+            }
         }
-    }}
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -75,7 +81,10 @@ def _get_tariffs(db: Session) -> list:
 # --------------------------------------------------------------------------- #
 
 @router.get("/current")
-def current_tariff(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def current_tariff(
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
     """
     Return the tariff slab active right now (Asia/Kolkata timezone).
 
@@ -91,7 +100,10 @@ def current_tariff(db: Session = Depends(get_db), current_user: User = Depends(g
 # --------------------------------------------------------------------------- #
 
 @router.get("/")
-def full_schedule(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def full_schedule(
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
     """
     Return all tariff slabs ordered by start_time.
     Overnight slab (22:00–06:00) is placed last.
@@ -108,7 +120,10 @@ def full_schedule(db: Session = Depends(get_db), current_user: User = Depends(ge
 # --------------------------------------------------------------------------- #
 
 @router.get("/today-cost")
-def today_cost(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def today_cost(
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
     """
     Calculate today's electricity bill from all meter readings since midnight IST.
 
@@ -117,17 +132,20 @@ def today_cost(db: Session = Depends(get_db), current_user: User = Depends(get_c
     Response:
         {"today_kwh": 14.2, "today_cost": 72.35}
     """
-    # Midnight IST today (timestamps are now stored in IST)
-    today_ist   = datetime.datetime.now(tz=IST).replace(
+    # Midnight IST today
+    today_ist = datetime.now(tz=IST).replace(
         hour=0, minute=0, second=0, microsecond=0
-    ).replace(tzinfo=None)  # Remove timezone info for SQLAlchemy comparison
+    )
+    
+    # Convert to UTC for DB query (timestamps stored as UTC in SQLAlchemy)
+    today_utc = today_ist.astimezone(timezone.utc).replace(tzinfo=None)
 
     readings = (
         db.query(MeterReading)
-        .filter(MeterReading.timestamp >= today_ist)
+        .filter(MeterReading.timestamp >= today_utc)
         .all()
     )
-    tariffs  = _get_tariffs(db)
+    tariffs = _get_tariffs(db)
     return calculate_today_cost(readings, tariffs)
 
 
@@ -136,7 +154,11 @@ def today_cost(db: Session = Depends(get_db), current_user: User = Depends(get_c
 # --------------------------------------------------------------------------- #
 
 @router.post("/simulate")
-def simulate(req: SimulateRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def simulate(
+    req: SimulateRequest, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
     """
     Simulate cost of running an appliance at a specific start time.
 
@@ -150,10 +172,10 @@ def simulate(req: SimulateRequest, db: Session = Depends(get_db), current_user: 
     """
     tariffs = _get_tariffs(db)
     return simulate_cost(
-        power_kw         = req.power_kw,
-        duration_minutes = req.duration_minutes,
-        start_time_str   = req.start_time,
-        tariff_rows      = tariffs,
+        power_kw=req.power_kw,
+        duration_minutes=req.duration_minutes,
+        start_time_str=req.start_time,
+        tariff_rows=tariffs,
     )
 
 
@@ -162,7 +184,11 @@ def simulate(req: SimulateRequest, db: Session = Depends(get_db), current_user: 
 # --------------------------------------------------------------------------- #
 
 @router.post("/cheapest-slot")
-def cheapest_slot(req: CheapestSlotRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def cheapest_slot(
+    req: CheapestSlotRequest, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
     """
     Find the lowest-cost continuous time slot to run an appliance
     within the given search window. Handles overnight windows (e.g. 18:00–06:00).
@@ -177,9 +203,9 @@ def cheapest_slot(req: CheapestSlotRequest, db: Session = Depends(get_db), curre
     """
     tariffs = _get_tariffs(db)
     return find_cheapest_slot(
-        power_kw         = req.power_kw,
-        duration_minutes = req.duration_minutes,
-        window_start_str = req.window_start,
-        window_end_str   = req.window_end,
-        tariff_rows      = tariffs,
+        power_kw=req.power_kw,
+        duration_minutes=req.duration_minutes,
+        window_start_str=req.window_start,
+        window_end_str=req.window_end,
+        tariff_rows=tariffs,
     )

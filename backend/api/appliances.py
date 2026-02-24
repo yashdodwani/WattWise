@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from db.session import get_db
-from db.models import Appliance, User
-from datetime import datetime, timedelta
-from db.models import ApplianceUsage
-from api.auth import get_current_user
+from db.models import Appliance, User, ApplianceUsage
+from datetime import datetime
 from zoneinfo import ZoneInfo
+from api.auth import get_current_user
 
 IST = ZoneInfo("Asia/Kolkata")
 
@@ -29,12 +28,16 @@ def list_appliances(db: Session = Depends(get_db), current_user: User = Depends(
         for a in appliances
     ]
 
+
 @router.post("/{appliance_id}/on")
 def turn_on(appliance_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    appliance = db.query(Appliance).get(appliance_id)
+    appliance = db.query(Appliance).filter(
+        Appliance.id == appliance_id, 
+        Appliance.user_id == current_user.id
+    ).first()
 
-    if not appliance or appliance.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    if not appliance:
+        raise HTTPException(status_code=403, detail="Not authorized or appliance not found")
 
     if appliance.is_on:
         return {"message": "Already ON"}
@@ -46,12 +49,16 @@ def turn_on(appliance_id: int, db: Session = Depends(get_db), current_user: User
 
     return {"message": f"{appliance.name} turned ON"}
 
+
 @router.post("/{appliance_id}/off")
 def turn_off(appliance_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    appliance = db.query(Appliance).get(appliance_id)
+    appliance = db.query(Appliance).filter(
+        Appliance.id == appliance_id, 
+        Appliance.user_id == current_user.id
+    ).first()
 
-    if not appliance or appliance.user_id != current_user.id or not appliance.is_on:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    if not appliance or not appliance.is_on:
+        raise HTTPException(status_code=403, detail="Not authorized or appliance not running")
 
     end_time = now_ist()
     duration_hours = (end_time - appliance.last_started_at).total_seconds() / 3600
@@ -76,10 +83,15 @@ def turn_off(appliance_id: int, db: Session = Depends(get_db), current_user: Use
         "energy_used_kwh": energy_used
     }
 
+
 @router.get("/{appliance_id}/usage")
 def appliance_usage(appliance_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    appliance = db.query(Appliance).get(appliance_id)
-    if not appliance or appliance.user_id != current_user.id:
+    appliance = db.query(Appliance).filter(
+        Appliance.id == appliance_id, 
+        Appliance.user_id == current_user.id
+    ).first()
+    
+    if not appliance:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     today = now_ist().date()

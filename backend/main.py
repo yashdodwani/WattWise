@@ -11,10 +11,13 @@ import time
 from api.meter import router as meter_router
 from api.appliances import router as appliances_router
 from api.tariffs import router as tariff_router
-from api.auth import router as auth_router
+from api.dashboard import router as dashboard_router
 from services.meter_simulator import generate_reading
 import os
 import migrate
+
+# Remove or comment out auth_router import if not needed
+# from api.auth import router as auth_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -32,7 +35,11 @@ app.add_middleware(
 app.include_router(meter_router)
 app.include_router(tariff_router)
 app.include_router(appliances_router)
-app.include_router(auth_router)
+app.include_router(dashboard_router)
+
+# Remove or comment out if auth_router not available
+# app.include_router(auth_router)
+
 @app.get("/")
 def health_check():
     return {"status":"wattwise backend is running"}
@@ -57,7 +64,6 @@ def startup_event():
             print("✅ Migrations completed")
         except Exception as e:
             print(f"⚠️ Migration failed: {e}")
-
 
 def meter_loop():
     while True:
