@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from db.session import get_db
-from db.models import Appliance
+from db.models import Appliance, User
 from datetime import datetime, timedelta
 from db.models import ApplianceUsage
+from api.auth import get_current_user
 from zoneinfo import ZoneInfo
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -15,7 +16,7 @@ router = APIRouter(prefix="/appliances", tags=["Appliances"])
 
 
 @router.get("/")
-def list_appliances(db: Session = Depends(get_db)):
+def list_appliances(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     appliances = db.query(Appliance).all()
 
     return [
@@ -29,7 +30,7 @@ def list_appliances(db: Session = Depends(get_db)):
     ]
 
 @router.post("/{appliance_id}/on")
-def turn_on(appliance_id: int, db: Session = Depends(get_db)):
+def turn_on(appliance_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     appliance = db.query(Appliance).get(appliance_id)
 
     if not appliance:
@@ -46,7 +47,7 @@ def turn_on(appliance_id: int, db: Session = Depends(get_db)):
     return {"message": f"{appliance.name} turned ON"}
 
 @router.post("/{appliance_id}/off")
-def turn_off(appliance_id: int, db: Session = Depends(get_db)):
+def turn_off(appliance_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     appliance = db.query(Appliance).get(appliance_id)
 
     if not appliance or not appliance.is_on:
@@ -76,7 +77,7 @@ def turn_off(appliance_id: int, db: Session = Depends(get_db)):
     }
 
 @router.get("/{appliance_id}/usage")
-def appliance_usage(appliance_id: int, db: Session = Depends(get_db)):
+def appliance_usage(appliance_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     today = now_ist().date()
 
     usages = db.query(ApplianceUsage).filter(

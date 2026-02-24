@@ -1,3 +1,4 @@
+import os
 import bcrypt
 import jwt
 from datetime import datetime, timedelta
@@ -7,7 +8,7 @@ from zoneinfo import ZoneInfo
 IST = ZoneInfo("Asia/Kolkata")
 
 # ==================== CONFIG ====================
-SECRET_KEY = "your-secret-key-change-in-production"  # Change this in production
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")  # Use env var in production, dev fallback
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 OTP_EXPIRE_MINUTES = 10  # 10 minutes
@@ -69,4 +70,3 @@ def generate_otp() -> str:
 def get_otp_expiry() -> datetime:
     """Get OTP expiry time (current time + 10 minutes)"""
     return datetime.now(IST) + timedelta(minutes=OTP_EXPIRE_MINUTES)
-

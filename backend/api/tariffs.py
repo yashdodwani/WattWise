@@ -19,7 +19,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db.session import get_db
-from db.models import Tariff, MeterReading
+from db.models import Tariff, MeterReading, User
+from api.auth import get_current_user
 from services.tariff_service import (
     get_current_tariff,
     get_full_schedule,
@@ -74,7 +75,7 @@ def _get_tariffs(db: Session) -> list:
 # --------------------------------------------------------------------------- #
 
 @router.get("/current")
-def current_tariff(db: Session = Depends(get_db)):
+def current_tariff(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Return the tariff slab active right now (Asia/Kolkata timezone).
 
@@ -90,7 +91,7 @@ def current_tariff(db: Session = Depends(get_db)):
 # --------------------------------------------------------------------------- #
 
 @router.get("/")
-def full_schedule(db: Session = Depends(get_db)):
+def full_schedule(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Return all tariff slabs ordered by start_time.
     Overnight slab (22:00–06:00) is placed last.
@@ -107,7 +108,7 @@ def full_schedule(db: Session = Depends(get_db)):
 # --------------------------------------------------------------------------- #
 
 @router.get("/today-cost")
-def today_cost(db: Session = Depends(get_db)):
+def today_cost(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Calculate today's electricity bill from all meter readings since midnight IST.
 
@@ -135,7 +136,7 @@ def today_cost(db: Session = Depends(get_db)):
 # --------------------------------------------------------------------------- #
 
 @router.post("/simulate")
-def simulate(req: SimulateRequest, db: Session = Depends(get_db)):
+def simulate(req: SimulateRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Simulate cost of running an appliance at a specific start time.
 
@@ -161,7 +162,7 @@ def simulate(req: SimulateRequest, db: Session = Depends(get_db)):
 # --------------------------------------------------------------------------- #
 
 @router.post("/cheapest-slot")
-def cheapest_slot(req: CheapestSlotRequest, db: Session = Depends(get_db)):
+def cheapest_slot(req: CheapestSlotRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Find the lowest-cost continuous time slot to run an appliance
     within the given search window. Handles overnight windows (e.g. 18:00–06:00).

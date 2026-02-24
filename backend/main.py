@@ -13,6 +13,8 @@ from api.appliances import router as appliances_router
 from api.tariffs import router as tariff_router
 from api.auth import router as auth_router
 from services.meter_simulator import generate_reading
+import os
+import migrate
 
 Base.metadata.create_all(bind=engine)
 
@@ -44,6 +46,18 @@ def startup_event():
     db = SessionLocal()
     seed_data(db)
     db.close()
+
+    # Optional database migrations: set RUN_MIGRATIONS=1 in env to run
+    run_migs = os.getenv("RUN_MIGRATIONS", "0").lower()
+    if run_migs in ("1", "true", "yes"):
+        try:
+            print("🔄 Running migrations (RUN_MIGRATIONS=1)")
+            migrate.migrate_users_table()
+            migrate.create_otp_table()
+            print("✅ Migrations completed")
+        except Exception as e:
+            print(f"⚠️ Migration failed: {e}")
+
 
 def meter_loop():
     while True:
