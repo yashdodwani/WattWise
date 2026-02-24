@@ -265,7 +265,7 @@ def request_otp(request: OTPLoginRequest, db: Session = Depends(get_db)):
     # TODO: Send OTP via SMS (integrate with Twilio, AWS SNS, or similar)
     # send_sms(phone_number=request.phone_number, message=f"Your WattWise OTP is: {otp_code}")
 
-    print(f"[DEV] OTP for {request.phone_number}: {otp_code}")  # For development only
+    print(f"[DEV] OTP for {request.phone_number}: {otp_code} (HARDCODED)")  # For development only
 
     return OTPResponse(
         message="OTP sent successfully to your phone number",
