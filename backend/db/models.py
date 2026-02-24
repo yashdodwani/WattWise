@@ -16,9 +16,16 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
+    username = Column(String, unique=True, nullable=True, index=True)
+    password_hash = Column(String, nullable=True)
+    phone_number = Column(String, unique=True, nullable=False, index=True)
+    consumer_number = Column(String, unique=True, nullable=False, index=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=now_ist)
 
     meters = relationship("Meter", back_populates="user")
     appliances = relationship("Appliance", back_populates="user")
+    otp_records = relationship("OTPRecord", back_populates="user")
 
 
 # ---------------- METERS ----------------
@@ -88,3 +95,17 @@ class ApplianceUsage(Base):
     start_time = Column(DateTime)
     end_time = Column(DateTime)
     energy_kwh = Column(Float)
+
+
+# ---------------- OTP RECORDS ----------------
+class OTPRecord(Base):
+    __tablename__ = "otp_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    otp_code = Column(String)
+    created_at = Column(DateTime, default=now_ist)
+    expires_at = Column(DateTime)
+    is_used = Column(Boolean, default=False)
+
+    user = relationship("User", back_populates="otp_records")

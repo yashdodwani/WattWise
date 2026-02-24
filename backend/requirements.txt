@@ -5,3 +5,7 @@ psycopg2-binary
 pydantic
 python-dotenv
 pytz
+tzdata
+PyJWT
+bcrypt
+python-jose[cryptography]
