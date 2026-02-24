@@ -1,5 +1,7 @@
 import os
 import bcrypt
+import secrets
+import string
 import jwt
 from datetime import datetime, timedelta
 from typing import Optional
@@ -57,14 +59,8 @@ def verify_access_token(token: str) -> Optional[dict]:
 
 
 # ==================== OTP ====================
-
-import random
-import string
-
-
 def generate_otp() -> str:
-    """Generate a 6-digit OTP"""
-    return ''.join(random.choices(string.digits, k=6))
+    return ''.join(secrets.choice("0123456789") for _ in range(6))
 
 
 def get_otp_expiry() -> datetime:
