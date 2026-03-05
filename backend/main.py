@@ -8,6 +8,7 @@ from db.session import SessionLocal
 from db.seed import seed_data
 import threading
 import time
+import urllib.request
 from api.meter import router as meter_router
 from api.appliances import router as appliances_router
 from api.tariffs import router as tariff_router
@@ -76,3 +77,25 @@ def meter_loop():
 def start_simulator():
     thread = threading.Thread(target=meter_loop, daemon=True)
     thread.start()
+
+
+def self_ping_loop():
+    """Ping own health endpoint every 9 minutes to prevent Render free-tier spin-down."""
+    url = os.getenv("RENDER_EXTERNAL_URL", "").rstrip("/")
+    if not url:
+        print("ℹ️  RENDER_EXTERNAL_URL not set — self-ping disabled")
+        return
+    ping_url = f"{url}/"
+    while True:
+        time.sleep(9 * 60)  # wait 9 minutes
+        try:
+            with urllib.request.urlopen(ping_url, timeout=10) as resp:
+                print(f"🏓 Self-ping OK ({resp.status}): {ping_url}")
+        except Exception as e:
+            print(f"⚠️  Self-ping failed: {e}")
+
+@app.on_event("startup")
+def start_self_ping():
+    thread = threading.Thread(target=self_ping_loop, daemon=True)
+    thread.start()
+
