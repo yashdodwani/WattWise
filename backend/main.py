@@ -25,7 +25,10 @@ app = FastAPI(title="wattwise backend")
 
 # Add CORS middleware
 # ALLOWED_ORIGINS env var: comma-separated list of origins, or "*" to allow all
-_raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080")
+_raw_origins = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:8080,http://127.0.0.1:8080,https://smart-flow-uikit.onrender.com"
+)
 _origins = [o.strip() for o in _raw_origins.split(",")]
 
 app.add_middleware(
