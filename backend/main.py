@@ -23,9 +23,13 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="wattwise backend")
 
 # Add CORS middleware
+# ALLOWED_ORIGINS env var: comma-separated list of origins, or "*" to allow all
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080")
+_origins = [o.strip() for o in _raw_origins.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080"],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
