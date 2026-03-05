@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from db.session import get_db
 from db.models import User, OTPRecord
+from db.seed import seed_appliances_for_user
 from schemas.auth import (
     CombinedRegistrationRequest,
     LoginRequest,
@@ -158,6 +159,9 @@ def register_combined(request: CombinedRegistrationRequest, db: Session = Depend
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # Seed default appliances + meter for the new user
+    seed_appliances_for_user(db, new_user.id)
 
     # ✨ GENERATE JWT TOKEN INSTANTLY (NO LOGIN REQUIRED!)
     access_token = create_access_token(new_user.id, new_user.username)

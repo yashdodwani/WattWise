@@ -13,6 +13,7 @@ from api.appliances import router as appliances_router
 from api.tariffs import router as tariff_router
 from api.auth import router as auth_router
 from api.dashboard import router as dashboard_router
+from api.recommendations import router as recommendations_router
 from services.meter_simulator import generate_reading
 import os
 import migrate
@@ -35,6 +36,7 @@ app.include_router(tariff_router)
 app.include_router(appliances_router)
 app.include_router(auth_router)
 app.include_router(dashboard_router)
+app.include_router(recommendations_router)
 @app.get("/")
 def health_check():
     return {"status":"wattwise backend is running"}
