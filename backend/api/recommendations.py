@@ -24,8 +24,9 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from db.session import get_db
-from db.models import Tariff, Appliance
+from db.models import Tariff, Appliance, User
 from schemas.recommendation import Recommendation
+from api.auth import get_current_user
 from services.tariff_service import (
     simulate_cost,
     find_cheapest_slot,
@@ -167,6 +168,7 @@ def _build_recommendation(
 async def get_recommendations(
     duration_minutes: int = Query(60, description="Default run duration in minutes"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Returns best time slot for every appliance.
@@ -206,6 +208,7 @@ def get_recommendation_for_appliance(
     duration_minutes: int     = Query(60, description="Run duration in minutes"),
     top_n           : int     = Query(3, ge=1, le=10, description="Number of slots"),
     db              : Session = Depends(get_db),
+    current_user    : User    = Depends(get_current_user),
 ):
     """
     Returns top N cheapest time slots for a specific appliance.
@@ -234,6 +237,7 @@ def get_best_slot(
     appliance_id    : int     = Path(..., description="Appliance ID from DB"),
     duration_minutes: int     = Query(60, description="Run duration in minutes"),
     db              : Session = Depends(get_db),
+    current_user    : User    = Depends(get_current_user),
 ):
     """
     Returns the single cheapest time slot with a voice-assistant-ready message.
@@ -281,6 +285,7 @@ def compare_times(
     appliance_id: int                  = Path(..., description="Appliance ID from DB"),
     req         : CompareTimesRequest  = ...,
     db          : Session              = Depends(get_db),
+    current_user: User                 = Depends(get_current_user),
 ):
     """
     Compare cost of running an appliance at specific times chosen by the user.
