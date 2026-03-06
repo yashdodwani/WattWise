@@ -109,3 +109,29 @@ class OTPRecord(Base):
     is_used = Column(Boolean, default=False)
 
     user = relationship("User", back_populates="otp_records")
+
+
+# ---------------- BILLS ----------------
+class Bill(Base):
+    __tablename__ = "bills"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    units = Column(Float)
+    amount = Column(Float)
+    status = Column(String, default="unpaid")
+    due_date = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# ---------------- COMPLAINTS ----------------
+class Complaint(Base):
+    __tablename__ = "complaints"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    type = Column(String)
+    description = Column(String)
+    status = Column(String, default="OPEN")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
