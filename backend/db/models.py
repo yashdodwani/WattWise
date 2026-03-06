@@ -135,3 +135,17 @@ class Complaint(Base):
     status = Column(String, default="OPEN")
     created_at = Column(DateTime, default=datetime.utcnow)
     resolved_at = Column(DateTime, nullable=True)
+
+
+# ---------------- OUTAGES ----------------
+class Outage(Base):
+    __tablename__ = "outages"
+
+    id = Column(Integer, primary_key=True)
+    area = Column(String)
+    reason = Column(String)
+    status = Column(String, default="ACTIVE")
+    start_time = Column(DateTime)
+    expected_restore = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+

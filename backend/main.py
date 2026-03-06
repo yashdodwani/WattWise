@@ -49,6 +49,7 @@ app.include_router(dashboard_router)
 app.include_router(recommendations_router)
 app.include_router(billing_router)
 app.include_router(complaints_router)
+app.include_router(outages_router)
 @app.get("/")
 def health_check():
     return {"status":"wattwise backend is running"}
