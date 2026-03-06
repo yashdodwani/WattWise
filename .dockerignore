@@ -1,0 +1,29 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+ww/
+venv/
+.venv/
+env/
+
+# Environment files
+.env
+*.env
+
+# Git
+.git/
+.gitignore
+
+# Docs / misc
+*.md
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
