@@ -17,6 +17,8 @@ from api.recommendations import router as recommendations_router
 from services.meter_simulator import generate_reading
 import os
 import migrate
+from api.billing import router as billing_router
+from api.complaints import router as complaints_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -37,6 +39,8 @@ app.include_router(appliances_router)
 app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(recommendations_router)
+app.include_router(billing_router)
+app.include_router(complaints_router)
 @app.get("/")
 def health_check():
     return {"status":"wattwise backend is running"}
