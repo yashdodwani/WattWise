@@ -176,7 +176,7 @@ async def get_recommendations(
 
     Compatible with existing response_model=List[Recommendation].
     """
-    appliances  = db.query(Appliance).all()
+    appliances  = db.query(Appliance).filter(Appliance.user_id == current_user.id).all()
     tariff_rows = db.query(Tariff).all()
     results     = []
 
