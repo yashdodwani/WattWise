@@ -20,6 +20,7 @@ import os
 import migrate
 from api.billing import router as billing_router
 from api.complaints import router as complaints_router
+from api.outages import router as outages_router
 
 Base.metadata.create_all(bind=engine)
 
