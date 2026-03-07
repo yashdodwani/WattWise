@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from db.session import get_db
 from db.models import Appliance, User
-from datetime import datetime, timedelta
+from datetime import datetime
 from db.models import ApplianceUsage
 from api.auth import get_current_user
 from zoneinfo import ZoneInfo
@@ -31,7 +31,7 @@ def list_appliances(db: Session = Depends(get_db), current_user: User = Depends(
 
 @router.post("/{appliance_id}/on")
 def turn_on(appliance_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    appliance = db.query(Appliance).get(appliance_id)
+    appliance = db.query(Appliance).filter(Appliance.id == appliance_id).first()
 
     if not appliance or appliance.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -48,19 +48,34 @@ def turn_on(appliance_id: int, db: Session = Depends(get_db), current_user: User
 
 @router.post("/{appliance_id}/off")
 def turn_off(appliance_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    appliance = db.query(Appliance).get(appliance_id)
+    appliance = db.query(Appliance).filter(Appliance.id == appliance_id).first()
 
-    if not appliance or appliance.user_id != current_user.id or not appliance.is_on:
+    if not appliance or appliance.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    end_time = now_ist()
-    duration_hours = (end_time - appliance.last_started_at).total_seconds() / 3600
+    if not appliance.is_on:
+        return {"message": f"{appliance.name} is already OFF", "energy_used_kwh": 0}
 
-    energy_used = round(appliance.power_kw * duration_hours, 3)
+    end_time = now_ist()
+
+    # Guard: last_started_at may be None if the appliance was seeded as ON
+    # without a recorded start time — fall back to 0 energy in that case.
+    if appliance.last_started_at is None:
+        duration_hours = 0.0
+        start_time = end_time
+    else:
+        last_started = appliance.last_started_at
+        # Ensure both datetimes are comparable (handle naive DB timestamps)
+        if last_started.tzinfo is None:
+            last_started = last_started.replace(tzinfo=ZoneInfo("UTC")).astimezone(IST)
+        duration_hours = (end_time - last_started).total_seconds() / 3600
+        start_time = last_started
+
+    energy_used = round(appliance.power_kw * max(duration_hours, 0), 3)
 
     usage = ApplianceUsage(
         appliance_id=appliance.id,
-        start_time=appliance.last_started_at,
+        start_time=start_time,
         end_time=end_time,
         energy_kwh=energy_used
     )
@@ -78,7 +93,7 @@ def turn_off(appliance_id: int, db: Session = Depends(get_db), current_user: Use
 
 @router.get("/{appliance_id}/usage")
 def appliance_usage(appliance_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    appliance = db.query(Appliance).get(appliance_id)
+    appliance = db.query(Appliance).filter(Appliance.id == appliance_id).first()
     if not appliance or appliance.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
