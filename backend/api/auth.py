@@ -12,6 +12,8 @@ from schemas.auth import (
     OTPResponse,
     RegisterWithTokenResponse,
     UserProfile,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
 from utils.security import (
     hash_password,
@@ -337,6 +339,83 @@ def verify_otp(request: VerifyOTPRequest, db: Session = Depends(get_db)):
         user_id=user.id,
         username=user.username,
     )
+
+
+# ==================== FORGOT PASSWORD ENDPOINTS ====================
+
+@router.post("/forgot-password", response_model=OTPResponse)
+def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Step 1 – Forgot Password: Request an OTP to the registered phone number.
+    The OTP is valid for 10 minutes.
+    """
+    if not validate_phone_number(request.phone_number):
+        raise HTTPException(status_code=400, detail="Phone number must be 10 digits")
+
+    user = db.query(User).filter(User.phone_number == request.phone_number).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="No account found with this phone number")
+
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="User account is inactive")
+
+    otp_code = generate_otp()
+    expiry_time = get_otp_expiry()
+
+    otp_record = OTPRecord(
+        user_id=user.id,
+        otp_code=otp_code,
+        expires_at=expiry_time,
+    )
+    db.add(otp_record)
+    db.commit()
+
+    # TODO: Send OTP via SMS in production
+    print(f"[DEV] Password-reset OTP for {request.phone_number}: {otp_code}")
+
+    return OTPResponse(
+        message="OTP sent successfully. Use it to reset your password.",
+        phone_number=request.phone_number,
+    )
+
+
+@router.post("/reset-password")
+def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Step 2 – Reset Password: Verify OTP and set a new password.
+    """
+    if not validate_phone_number(request.phone_number):
+        raise HTTPException(status_code=400, detail="Phone number must be 10 digits")
+
+    if len(request.otp_code) != 6 or not request.otp_code.isdigit():
+        raise HTTPException(status_code=400, detail="OTP must be 6 digits")
+
+    if not request.new_password or len(request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+
+    user = db.query(User).filter(User.phone_number == request.phone_number).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="User account is inactive")
+
+    otp_record = db.query(OTPRecord).filter(
+        OTPRecord.user_id == user.id,
+        OTPRecord.otp_code == request.otp_code,
+        OTPRecord.is_used == False,
+        OTPRecord.expires_at > datetime.now(IST),
+    ).first()
+
+    if not otp_record:
+        raise HTTPException(status_code=401, detail="Invalid or expired OTP")
+
+    # Mark OTP as used and update password
+    otp_record.is_used = True
+    user.password_hash = hash_password(request.new_password)
+    db.commit()
+
+    return {"message": "Password reset successfully. You can now log in with your new password."}
 
 
 # ==================== USER PROFILE ENDPOINTS ====================

@@ -64,6 +64,20 @@ class OTPResponse(BaseModel):
     phone_number: str
 
 
+# ==================== FORGOT PASSWORD ====================
+
+class ForgotPasswordRequest(BaseModel):
+    """Request OTP to reset password"""
+    phone_number: str = Field(..., min_length=10, max_length=10, description="Registered 10 digit phone number")
+
+
+class ResetPasswordRequest(BaseModel):
+    """Verify OTP and set new password"""
+    phone_number: str = Field(..., min_length=10, max_length=10)
+    otp_code: str = Field(..., min_length=6, max_length=6, description="6 digit OTP code")
+    new_password: str = Field(..., min_length=6, description="New password must be at least 6 characters")
+
+
 # ==================== USER PROFILE ====================
 
 class UserProfile(BaseModel):
