@@ -21,6 +21,7 @@ import migrate
 from api.billing import router as billing_router
 from api.complaints import router as complaints_router
 from api.outages import router as outages_router
+from api.chatbot import router as chatbot_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -51,6 +52,7 @@ app.include_router(recommendations_router)
 app.include_router(billing_router)
 app.include_router(complaints_router)
 app.include_router(outages_router)
+app.include_router(chatbot_router)
 @app.get("/")
 def health_check():
     return {"status":"wattwise backend is running"}

@@ -513,9 +513,9 @@
 
 ## 6. Recommendations
 
-> Uses sliding-window algorithm to find optimal appliance run times across the full 24-hour tariff schedule.
+> All recommendation endpoints require authentication. Uses sliding-window algorithm to find optimal appliance run times across the full 24-hour tariff schedule.
 
-### GET `/recommendations/` *(No auth required)*
+### GET `/recommendations/` 🔒
 **Best time slot for every appliance (summary list).**
 
 | Query Param | Type | Default | Description |
@@ -540,7 +540,7 @@
 
 ---
 
-### GET `/recommendations/{appliance_id}` *(No auth required)*
+### GET `/recommendations/{appliance_id}` 🔒
 **Top N cheapest time slots for one appliance.**
 
 | Param | Type | Default | Description |
@@ -587,7 +587,7 @@
 
 ---
 
-### GET `/recommendations/{appliance_id}/best` *(No auth required)*
+### GET `/recommendations/{appliance_id}/best` 🔒
 **Single best slot with voice-assistant-ready message.**
 
 **Response `200`:**
@@ -610,7 +610,7 @@
 
 ---
 
-### POST `/recommendations/{appliance_id}/compare` *(No auth required)*
+### POST `/recommendations/{appliance_id}/compare` 🔒
 **Compare cost of running an appliance at specific user-chosen times.**
 
 **Request Body:**
