@@ -254,8 +254,8 @@ def request_otp(request: OTPLoginRequest, db: Session = Depends(get_db)):
             detail="User account is inactive"
         )
 
-    # Generate OTP
-    otp_code = generate_otp()
+    # HARDCODED OTP for development (no SMS integration yet)
+    otp_code = "454567"
     expiry_time = get_otp_expiry()
 
     # Store OTP in database
@@ -268,8 +268,6 @@ def request_otp(request: OTPLoginRequest, db: Session = Depends(get_db)):
     db.add(otp_record)
     db.commit()
 
-    # TODO: Send OTP via SMS (integrate with Twilio, AWS SNS, or similar)
-    # send_sms(phone_number=request.phone_number, message=f"Your WattWise OTP is: {otp_code}")
 
     print(f"[DEV] OTP for {request.phone_number}: {otp_code} (HARDCODED)")  # For development only
 
@@ -359,7 +357,8 @@ def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db
     if not user.is_active:
         raise HTTPException(status_code=403, detail="User account is inactive")
 
-    otp_code = generate_otp()
+    # HARDCODED OTP for development (no SMS integration yet)
+    otp_code = "454567"
     expiry_time = get_otp_expiry()
 
     otp_record = OTPRecord(
@@ -370,8 +369,7 @@ def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db
     db.add(otp_record)
     db.commit()
 
-    # TODO: Send OTP via SMS in production
-    print(f"[DEV] Password-reset OTP for {request.phone_number}: {otp_code}")
+    print(f"[DEV] Password-reset OTP for {request.phone_number}: {otp_code} (HARDCODED)")
 
     return OTPResponse(
         message="OTP sent successfully. Use it to reset your password.",
