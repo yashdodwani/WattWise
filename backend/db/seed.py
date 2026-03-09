@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from db.models import User, Meter, Appliance, Tariff
+from .models import User, Meter, Appliance, Tariff
 from datetime import time
 
 DEFAULT_APPLIANCES = [

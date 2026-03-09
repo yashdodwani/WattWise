@@ -9,7 +9,6 @@ POST /chatbot/query
 """
 
 import os
-import re
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -29,8 +28,13 @@ _gemini_client = None
 def _get_gemini_client():
     global _gemini_client
     if _gemini_client is None and GEMINI_API_KEY:
-        from google import genai as google_genai
-        _gemini_client = google_genai.Client(api_key=GEMINI_API_KEY)
+        try:
+            import importlib
+            google_genai = importlib.import_module('google.genai')
+            _gemini_client = google_genai.Client(api_key=GEMINI_API_KEY)
+        except Exception:
+            # Gemini client not available or failed to initialize
+            _gemini_client = None
     return _gemini_client
 
 

@@ -129,4 +129,3 @@ def resolve_outage(
     db.commit()
 
     return {"message": "Outage resolved successfully"}
-
