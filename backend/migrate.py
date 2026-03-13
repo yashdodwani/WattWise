@@ -112,4 +112,3 @@ if __name__ == "__main__":
         print(f"❌ MIGRATION FAILED: {e}")
         print("=" * 60)
         exit(1)
-

@@ -237,7 +237,7 @@ def get_best_slot(
     appliance_id    : int     = Path(..., description="Appliance ID from DB"),
     duration_minutes: int     = Query(60, description="Run duration in minutes"),
     db              : Session = Depends(get_db),
-    current_user    : User    = Depends(get_current_user),
+    current_user    : User = Depends(get_current_user),
 ):
     """
     Returns the single cheapest time slot with a voice-assistant-ready message.

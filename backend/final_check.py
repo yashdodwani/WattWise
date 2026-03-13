@@ -47,7 +47,8 @@ print()
 print("3️⃣  Checking Application Loads...")
 print("-" * 70)
 try:
-    from main import app
+    import main as main_mod
+    app = main_mod.app
     print(f"✅ Main app loads successfully")
     print(f"   FastAPI app: {app.title}")
 
@@ -89,4 +90,3 @@ print("   http://localhost:8000/redoc     (ReDoc)")
 print("   http://localhost:8000           (Health check)")
 print()
 print("=" * 70)
-

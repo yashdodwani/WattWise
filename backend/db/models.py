@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime, Time
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime, Time, Text
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -149,3 +149,16 @@ class Outage(Base):
     expected_restore = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+
+# ---------------- NOTIFICATIONS ----------------
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    title = Column(String, nullable=False)
+    message = Column(Text, nullable=False)
+    type = Column(String, nullable=False, default="general")  # bill / appliance / recommendation / warning
+    priority = Column(Integer, default=0)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=now_ist)

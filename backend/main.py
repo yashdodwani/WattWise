@@ -17,11 +17,16 @@ from api.dashboard import router as dashboard_router
 from api.recommendations import router as recommendations_router
 from services.meter_simulator import generate_reading
 import os
-import migrate
+from importlib import import_module
+migrate = import_module('migrate')
 from api.billing import router as billing_router
 from api.complaints import router as complaints_router
 from api.outages import router as outages_router
 from api.chatbot import router as chatbot_router
+from api.notifications import router as notifications_router
+from services.notification_service import notification_service
+from services import ws_manager
+import asyncio
 
 Base.metadata.create_all(bind=engine)
 
@@ -53,6 +58,7 @@ app.include_router(billing_router)
 app.include_router(complaints_router)
 app.include_router(outages_router)
 app.include_router(chatbot_router)
+app.include_router(notifications_router)
 @app.get("/")
 def health_check():
     return {"status":"wattwise backend is running"}
@@ -77,6 +83,14 @@ def startup_event():
             print("✅ Migrations completed")
         except Exception as e:
             print(f"⚠️ Migration failed: {e}")
+
+    # start background notification checks
+    try:
+        loop = asyncio.get_event_loop()
+        loop.create_task(notification_service.run_periodic_checks())
+    except RuntimeError:
+        # If no running loop (e.g., during tests), ignore
+        pass
 
 
 def meter_loop():
@@ -109,4 +123,3 @@ def self_ping_loop():
 def start_self_ping():
     thread = threading.Thread(target=self_ping_loop, daemon=True)
     thread.start()
-
