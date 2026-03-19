@@ -12,6 +12,8 @@ class CombinedRegistrationRequest(BaseModel):
     password: str = Field(..., min_length=6, description="Password must be at least 6 characters")
     phone_number: str = Field(..., min_length=10, max_length=10, description="10 digit phone number")
     consumer_number: str = Field(..., min_length=10, max_length=13, description="10-13 digit consumer number")
+    location: str = Field(..., min_length=1, max_length=100, description="City/area of the user")
+    discom: str = Field(..., min_length=1, max_length=100, description="Distribution company (e.g. DGVCL, UGVCL)")
 
 
 
@@ -22,6 +24,8 @@ class RegisterWithTokenResponse(BaseModel):
     username: str
     phone_number: str
     consumer_number: str
+    location: str
+    discom: str
     created_at: datetime
     access_token: str
     token_type: str = "bearer"
@@ -86,6 +90,8 @@ class UserProfile(BaseModel):
     username: str
     phone_number: str
     consumer_number: str
+    location: str
+    discom: str
     is_active: bool
     created_at: datetime
 

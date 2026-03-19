@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from api.auth import get_current_user
-from db.models import Appliance, Bill, Complaint, MeterReading, Meter, Outage
+from db.models import Appliance, Bill, Complaint, MeterReading, Meter, Outage, User
 from db.session import get_db
 
 # ── Gemini setup ──────────────────────────────────────────────────────────────
@@ -43,7 +43,6 @@ router = APIRouter(prefix="/chatbot", tags=["Chatbot"])
 
 SUPPORT_EMAIL = "support@intellismart.com"
 
-DEFAULT_USER_AREA = "Surat"
 
 
 # ── Request / Response Schemas ────────────────────────────────────────────────
@@ -234,9 +233,9 @@ def handle_complaint(message: str, current_user, db: Session) -> str:
     )
 
 
-def handle_outage(current_user, db: Session) -> str:
+def handle_outage(current_user: User, db: Session) -> str:
     """Return current outage status for the user's area."""
-    user_area = DEFAULT_USER_AREA
+    user_area = current_user.location
 
     outage = (
         db.query(Outage)

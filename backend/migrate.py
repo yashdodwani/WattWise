@@ -89,6 +89,43 @@ def create_otp_table():
             print(f"⚠️  OTP table creation warning: {e}")
 
 
+def migrate_location_discom():
+    """Add location and discom columns to users table"""
+
+    with engine.connect() as connection:
+        result = connection.execute(
+            text("""
+                SELECT column_name FROM information_schema.columns 
+                WHERE table_name = 'users' AND column_name = 'location'
+            """)
+        )
+
+        if result.fetchone():
+            print("✅ Location & discom columns already exist!")
+            return
+
+        print("🔄 Adding location and discom columns to users table...")
+
+        try:
+            connection.execute(text("""
+                ALTER TABLE users ADD COLUMN location VARCHAR NOT NULL DEFAULT 'Surat'
+            """))
+            print("✅ Added location column")
+
+            connection.execute(text("""
+                ALTER TABLE users ADD COLUMN discom VARCHAR NOT NULL DEFAULT 'DGVCL'
+            """))
+            print("✅ Added discom column")
+
+            connection.commit()
+            print("\n✅ Location & discom migration completed!")
+
+        except Exception as e:
+            connection.rollback()
+            print(f"❌ Location & discom migration failed: {e}")
+            raise
+
+
 if __name__ == "__main__":
     print("=" * 60)
     print("🔄 WattWise Database Migration Script")
@@ -99,6 +136,8 @@ if __name__ == "__main__":
         migrate_users_table()
         print()
         create_otp_table()
+        print()
+        migrate_location_discom()
         print()
         print("=" * 60)
         print("✅ DATABASE MIGRATION COMPLETE")

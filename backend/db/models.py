@@ -20,6 +20,8 @@ class User(Base):
     password_hash = Column(String, nullable=True)
     phone_number = Column(String, unique=True, nullable=False, index=True)
     consumer_number = Column(String, unique=True, nullable=False, index=True)
+    location = Column(String, nullable=False, default="Surat")
+    discom = Column(String, nullable=False, default="DGVCL")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=now_ist)
 

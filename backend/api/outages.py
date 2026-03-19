@@ -2,23 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from db.session import get_db
-from db.models import Outage
+from db.models import Outage, User
 from api.auth import get_current_user
 
 router = APIRouter(prefix="/outages", tags=["Outages"])
-
-# Placeholder until user profiles store area/pincode
-DEFAULT_USER_AREA = "Surat"
 
 
 # ── 1. GET /outages/current ───────────────────────────────────────────────────
 @router.get("/current")
 def get_current_outage(
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Return the active outage for the user's area, or a 'normal' status."""
-    user_area = DEFAULT_USER_AREA  # swap for current_user.area once available
+    user_area = current_user.location
 
     outage = (
         db.query(Outage)
