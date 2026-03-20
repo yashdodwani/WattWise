@@ -9,4 +9,4 @@ tzdata
 PyJWT
 bcrypt
 python-jose[cryptography]
-google-genai
+requests

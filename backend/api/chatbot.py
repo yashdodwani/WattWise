@@ -20,22 +20,9 @@ from api.auth import get_current_user
 from db.models import Appliance, Bill, Complaint, MeterReading, Meter, Outage, User
 from db.session import get_db
 
-# ── Gemini setup ──────────────────────────────────────────────────────────────
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-_gemini_client = None
-
-def _get_gemini_client():
-    global _gemini_client
-    if _gemini_client is None and GEMINI_API_KEY:
-        try:
-            import importlib
-            google_genai = importlib.import_module('google.genai')
-            _gemini_client = google_genai.Client(api_key=GEMINI_API_KEY)
-        except Exception:
-            # Gemini client not available or failed to initialize
-            _gemini_client = None
-    return _gemini_client
+# ── NVIDIA/OpenRouter setup ──────────────────────────────────────────────────
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
 # ── Router ────────────────────────────────────────────────────────────────────
@@ -59,34 +46,20 @@ class ChatResponse(BaseModel):
 # ── Intent Detection ──────────────────────────────────────────────────────────
 
 INTENT_KEYWORDS: dict[str, list[str]] = {
-    "billing": [
-        "bill", "electricity bill", "current bill", "my bill",
-        "billing", "how much do i owe", "amount due", "payment due",
-    ],
     "pay_bill": [
         "pay bill", "pay my bill", "make payment", "pay now",
-        "clear bill", "settle bill",
+        "clear bill", "settle bill", "complete payment",
     ],
     "complaint": [
-        "complaint", "report", "no power", "power outage", "voltage problem",
-        "meter issue", "billing issue", "file complaint", "lodge complaint",
-        "register complaint", "issue with",
-    ],
-    "outage": [
-        "outage", "power cut", "electricity cut", "is there power",
-        "power failure", "electricity outage", "cut in my area", "load shedding",
+        "file complaint", "lodge complaint", "register complaint",
+        "create complaint", "submit complaint",
     ],
     "appliance_on": [
-        "turn on", "switch on", "start", "enable", "power on",
+        "turn on", "switch on", "start the", "enable the", "power on the",
     ],
     "appliance_off": [
-        "turn off", "switch off", "stop", "disable", "power off",
-        "shut down", "shutdown",
-    ],
-    "energy_usage": [
-        "usage", "consumption", "how much electricity", "current load",
-        "energy consumption", "power consumption", "current usage",
-        "units used", "kwh",
+        "turn off", "switch off", "stop the", "disable the", "power off the",
+        "shut down the", "shutdown the",
     ],
     "escalate": [
         "not helpful", "still problem", "issue not solved", "complaint unresolved",
@@ -110,7 +83,7 @@ def detect_intent(message: str) -> str:
     if any(kw in msg for kw in INTENT_KEYWORDS["escalate"]):
         return "escalate"
 
-    # Appliance control — check before generic "complaint" / "billing"
+    # Appliance control — check for exact action phrases with appliance names
     has_appliance = any(name in msg for name in APPLIANCE_NAMES)
     if has_appliance:
         if any(kw in msg for kw in INTENT_KEYWORDS["appliance_off"]):
@@ -118,16 +91,15 @@ def detect_intent(message: str) -> str:
         if any(kw in msg for kw in INTENT_KEYWORDS["appliance_on"]):
             return "appliance_on"
 
-    # Pay bill must precede generic billing check
+    # Pay bill - only exact payment action phrases
     if any(kw in msg for kw in INTENT_KEYWORDS["pay_bill"]):
         return "pay_bill"
 
-    for intent, keywords in INTENT_KEYWORDS.items():
-        if intent in ("pay_bill", "appliance_on", "appliance_off", "escalate"):
-            continue  # already handled above
-        if any(kw in msg for kw in keywords):
-            return intent
+    # Complaint - only when explicitly filing/registering
+    if any(kw in msg for kw in INTENT_KEYWORDS["complaint"]):
+        return "complaint"
 
+    # Everything else goes to LLM for intelligent response
     return "general_query"
 
 
@@ -360,39 +332,203 @@ def handle_escalation() -> str:
     )
 
 
-def call_llm(message: str) -> str:
-    """Call Gemini LLM for general electricity-related queries."""
-    client = _get_gemini_client()
-
-    if not client:
+def call_llm(message: str, current_user, db: Session) -> str:
+    """Call NVIDIA model via OpenRouter for general electricity-related queries with user context."""
+    if not OPENROUTER_API_KEY:
         return (
             "I'm here to help with WattWise! You can ask me about your bill, "
             "energy usage, appliances, outages, or file a complaint. "
             "For general questions, please ensure the AI service is configured."
         )
 
-    system_prompt = (
-        "You are WattWise AI assistant for a smart electricity platform.\n\n"
-        "Help users with:\n"
-        "- electricity usage\n"
-        "- energy savings\n"
-        "- billing questions\n"
-        "- smart meter insights\n"
-        "- appliance energy optimization\n\n"
-        "Respond concisely and clearly.\n\n"
-        f"User question: {message}"
+    # Gather user context for better responses
+    from sqlalchemy import desc
+    from zoneinfo import ZoneInfo
+
+    IST = ZoneInfo("Asia/Kolkata")
+    today_start = (
+        datetime.now(tz=IST)
+        .replace(hour=0, minute=0, second=0, microsecond=0)
+        .replace(tzinfo=None)
     )
 
-    try:
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=system_prompt,
+    # Get user's bill information
+    bill = (
+        db.query(Bill)
+        .filter(Bill.user_id == current_user.id, Bill.status == "unpaid")
+        .order_by(desc(Bill.created_at))
+        .first()
+    )
+
+    # Get meter and usage data
+    meter = db.query(Meter).filter(Meter.user_id == current_user.id).first()
+
+    today_readings = []
+    total_consumption = 0
+    if meter:
+        readings = db.query(MeterReading).filter(MeterReading.meter_id == meter.id).all()
+        total_consumption = round(sum(r.energy_kwh for r in readings), 2)
+        today_readings = (
+            db.query(MeterReading)
+            .filter(MeterReading.timestamp >= today_start, MeterReading.meter_id == meter.id)
+            .all()
         )
-        return response.text
-    except Exception:
+
+    today_kwh = round(sum(r.energy_kwh for r in today_readings), 3)
+
+    # Get appliances information
+    appliances = db.query(Appliance).filter(Appliance.user_id == current_user.id).all()
+    active_appliances = [a.name for a in appliances if a.is_on]
+    all_appliances = [a.name for a in appliances]
+
+    # Get outage information
+    outage = None
+    if current_user.location:
+        outage = (
+            db.query(Outage)
+            .filter(Outage.status == "ACTIVE", Outage.area == current_user.location)
+            .first()
+        )
+
+    # Build context for LLM
+    bill_info = f"₹{bill.amount:.2f} (due on {bill.due_date.strftime('%B %d') if bill.due_date else 'TBD'})" if bill else "No unpaid bills"
+    estimated_bill = round(total_consumption * 7, 2) if not bill else bill.amount
+
+    outage_info = "No active outages" if not outage else f"Active outage in {outage.area}: {outage.reason}"
+
+    system_prompt = f"""You are **WattBot**, an intelligent AI assistant for the WattWise Smart Energy Platform.
+
+Your role is to help users understand and optimize their electricity usage, reduce costs, and interact with their smart energy system.
+
+---
+
+# 🔒 STRICT DOMAIN RULE
+
+You are ONLY allowed to answer queries related to:
+* Electricity usage
+* Energy consumption patterns
+* Appliance-level energy insights
+* Billing and cost breakdown
+* Tariffs and optimization
+* Energy saving suggestions
+* Outages and complaints
+
+If the user asks ANYTHING outside this domain, you MUST refuse politely.
+
+❌ Out-of-Scope Examples: "Who invented electricity?", "Who is the president of USA?", "Tell me a joke", "What is AI?"
+
+Response format for out-of-scope:
+"I'm WattBot, your energy assistant ⚡
+I can help you with electricity usage, bills, and saving energy.
+Please ask something related to your energy usage or WattWise services."
+
+---
+
+# 🧠 USER CONTEXT (USE THIS DATA)
+
+- Name: {current_user.name}
+- Location: {current_user.location if current_user.location else 'Not set'}
+- Current Bill: {bill_info}
+- Total Consumption: {total_consumption} kWh
+- Today's Consumption: {today_kwh} kWh
+- Estimated Bill Amount: ₹{estimated_bill}
+- Active Appliances: {', '.join(active_appliances) if active_appliances else 'None'}
+- Available Appliances: {', '.join(all_appliances) if all_appliances else 'None'}
+- Outage Status: {outage_info}
+
+You MUST use this data to generate personalized answers.
+DO NOT hallucinate data.
+If data is missing, say: "I don't have enough data to answer that accurately yet."
+
+---
+
+# 🧩 RESPONSE STYLE
+
+* Be concise but insightful
+* Sound like a smart energy advisor
+* Use numbers when possible
+* Give actionable suggestions
+* Be user-friendly, not robotic
+
+---
+
+# 🎯 TASK EXAMPLES
+
+## Bill Analysis
+Example: "Why is my bill increasing?"
+Response: Identify high consumption, mention specific appliances, mention time-of-day usage.
+
+## Appliance Insights
+Example: "Which appliance is using the most energy?"
+Response: Use actual appliance data from context.
+
+## Savings Suggestions
+Example: "How can I save more money?"
+Response: Provide specific, actionable tips based on user's appliances and usage.
+
+---
+
+# ⚠️ SAFETY RULES
+
+* Never generate fake numbers
+* Never assume missing data
+* Never answer outside domain
+* Always prioritize user-specific insights over generic advice
+
+---
+
+**User Question:** {message}
+
+Respond as WattBot in a helpful, conversational tone using the user context above."""
+
+    try:
+        import requests
+        import json
+
+        response = requests.post(
+            url=OPENROUTER_API_URL,
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            data=json.dumps({
+                "model": "nvidia/llama-3.1-nemotron-70b-instruct",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": system_prompt
+                    },
+                    {
+                        "role": "user",
+                        "content": message
+                    }
+                ]
+            }),
+            timeout=30
+        )
+
+        if response.status_code == 200:
+            response_data = response.json()
+            return response_data['choices'][0]['message']['content']
+        else:
+            return (
+                "I'm having trouble processing your request right now. "
+                "Please try again or use specific commands like 'pay bill', 'turn on AC', or 'file complaint'."
+            )
+
+    except Exception as e:
+        error_msg = str(e)
+        if "429" in error_msg or "quota" in error_msg.lower():
+            return (
+                "I'm currently experiencing high demand. "
+                "However, I can still help you with specific actions like:\n"
+                "• Pay your bill (say 'pay my bill')\n"
+                "• Control appliances (say 'turn on AC')\n"
+                "• File complaints (say 'file complaint')"
+            )
         return (
-            "I'm having trouble reaching the AI service right now. "
-            "Please try again later or ask me about your bill, appliances, or outages directly."
+            "I'm having trouble processing your request right now. "
+            "Please try again or use specific commands like 'pay bill', 'turn on AC', or 'file complaint'."
         )
 
 
@@ -419,17 +555,11 @@ def chatbot_query(
     intent = detect_intent(message)
 
     try:
-        if intent == "billing":
-            reply = handle_billing(current_user, db)
-
-        elif intent == "pay_bill":
+        if intent == "pay_bill":
             reply = handle_pay_bill(current_user, db)
 
         elif intent == "complaint":
             reply = handle_complaint(message, current_user, db)
-
-        elif intent == "outage":
-            reply = handle_outage(current_user, db)
 
         elif intent == "appliance_on":
             reply = handle_appliance("on", message, current_user, db)
@@ -437,14 +567,11 @@ def chatbot_query(
         elif intent == "appliance_off":
             reply = handle_appliance("off", message, current_user, db)
 
-        elif intent == "energy_usage":
-            reply = handle_energy_usage(current_user, db)
-
         elif intent == "escalate":
             reply = handle_escalation()
 
-        else:  # general_query → LLM fallback
-            reply = call_llm(message)
+        else:  # general_query → LLM for everything else
+            reply = call_llm(message, current_user, db)
             intent = "general_query"
 
     except HTTPException:

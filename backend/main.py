@@ -1,5 +1,7 @@
 from fastapi import FastAPI,Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.models import SecurityScheme
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from db.session import get_db
 from db.session import engine
@@ -30,7 +32,14 @@ import asyncio
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="wattwise backend")
+app = FastAPI(
+    title="WattWise Backend API",
+    description="Smart Electricity Management Platform",
+    version="1.0.0",
+)
+
+# Configure Bearer token authentication for Swagger UI
+security = HTTPBearer()
 
 # Add CORS middleware
 # ALLOWED_ORIGINS env var: comma-separated list of origins, or "*" to allow all
@@ -59,6 +68,47 @@ app.include_router(complaints_router)
 app.include_router(outages_router)
 app.include_router(chatbot_router)
 app.include_router(notifications_router)
+
+# Add Bearer token authentication scheme to OpenAPI for Swagger UI
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    from fastapi.openapi.utils import get_openapi
+
+    openapi_schema = get_openapi(
+        title="WattWise Backend API",
+        version="1.0.0",
+        description="Smart Electricity Management Platform",
+        routes=app.routes,
+    )
+
+    # Add Bearer token security scheme
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "Enter your JWT token obtained from /auth/login or /auth/register"
+        }
+    }
+
+    # Apply security globally to all endpoints (except auth endpoints)
+    for path, path_item in openapi_schema["paths"].items():
+        # Skip auth endpoints (login, register, otp, forgot-password, reset-password)
+        if "/auth/" in path and any(endpoint in path for endpoint in ["login", "register", "otp", "forgot-password", "reset-password"]):
+            continue
+
+        for method in path_item:
+            if method in ["get", "post", "put", "delete", "patch"]:
+                if "security" not in path_item[method]:
+                    path_item[method]["security"] = [{"BearerAuth": []}]
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
+
 @app.get("/")
 def health_check():
     return {"status":"wattwise backend is running"}
