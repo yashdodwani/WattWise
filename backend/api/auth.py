@@ -154,8 +154,6 @@ def register_combined(request: CombinedRegistrationRequest, db: Session = Depend
         password_hash=hashed_password,
         phone_number=request.phone_number,
         consumer_number=request.consumer_number,
-        location=request.location,
-        discom=request.discom,
         is_active=True
     )
 
@@ -177,8 +175,6 @@ def register_combined(request: CombinedRegistrationRequest, db: Session = Depend
         username=new_user.username,
         phone_number=new_user.phone_number,
         consumer_number=new_user.consumer_number,
-        location=new_user.location,
-        discom=new_user.discom,
         created_at=new_user.created_at,
         access_token=access_token,
         token_type="bearer",
