@@ -29,7 +29,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 # ==================== JWT TOKENS ====================
 
-def create_access_token(user_id: int, username: str, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(user_id: str, username: str, expires_delta: Optional[timedelta] = None) -> str:
     """Create a JWT access token"""
     if expires_delta is None:
         expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)

@@ -28,7 +28,7 @@ def mark_read(notification_id: int, current_user=Depends(get_current_user), db: 
 
 
 @router.websocket_route('/ws/notifications/{user_id}')
-async def websocket_endpoint(websocket: WebSocket, user_id: int):
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
     # Allow unauthenticated websocket connections but in production validate the JWT
     await manager.connect(user_id, websocket)
     try:

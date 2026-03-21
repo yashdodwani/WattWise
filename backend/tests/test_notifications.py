@@ -210,14 +210,11 @@ class TestGetNotifications:
         db.add(other_notif)
         db.commit()
 
-        token = create_access_token(other_user.id, other_user.username)
-        # ravikumar's token should NOT see other user's notification
-        ravi_token = create_access_token(
-            [u for u in [other_user]][0].id - 1,  # will fail – use proper fixture
-            "ravikumar"
-        )
+        # We can just use the user_id from one of the seeded notifications (which belong to test_user)
+        test_user_id = seed_notifications[0].user_id
+
         # Use ravikumar auth headers directly
-        ravi_headers = {"Authorization": f"Bearer {create_access_token(seed_notifications[0].user_id, 'ravikumar')}"}
+        ravi_headers = {"Authorization": f"Bearer {create_access_token(test_user_id, 'ravikumar')}"}
         response = client.get("/notifications", headers=ravi_headers)
         data = response.json()
         titles = [n["title"] for n in data]
