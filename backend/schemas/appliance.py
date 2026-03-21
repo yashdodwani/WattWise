@@ -3,11 +3,12 @@ Pydantic schemas for appliances and commands.
 """
 from pydantic import BaseModel
 from typing import Optional
+from uuid import UUID
 
 
 class Appliance(BaseModel):
     id: int
-    user_id: int
+    user_id: UUID
     name: str
     power_watts: float
     is_on: bool

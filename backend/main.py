@@ -26,6 +26,8 @@ from api.complaints import router as complaints_router
 from api.outages import router as outages_router
 from api.chatbot import router as chatbot_router
 from api.notifications import router as notifications_router
+from api.revenue import router as revenue_router
+from api.sms import router as sms_router
 from services.notification_service import notification_service
 from services import ws_manager
 import asyncio
@@ -68,6 +70,8 @@ app.include_router(complaints_router)
 app.include_router(outages_router)
 app.include_router(chatbot_router)
 app.include_router(notifications_router)
+app.include_router(revenue_router)
+app.include_router(sms_router)
 
 # Add Bearer token authentication scheme to OpenAPI for Swagger UI
 def custom_openapi():

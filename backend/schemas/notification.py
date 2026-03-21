@@ -1,10 +1,11 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 
 class NotificationCreate(BaseModel):
-    user_id: int
+    user_id: UUID
     title: str
     message: str
     type: str = "general"
