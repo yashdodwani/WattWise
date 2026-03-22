@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from db.session import get_db
 from db.models import Appliance, User
@@ -6,6 +7,7 @@ from datetime import datetime
 from db.models import ApplianceUsage
 from api.auth import get_current_user
 from zoneinfo import ZoneInfo
+from services.power_lookup import get_power_from_model
 
 IST = ZoneInfo("Asia/Kolkata")
 
@@ -13,6 +15,41 @@ def now_ist():
     return datetime.now(IST)
 
 router = APIRouter(prefix="/appliances", tags=["Appliances"])
+
+class PowerRequest(BaseModel):
+    brand: str
+    model: str
+
+@router.post("/estimate-power")
+def estimate_power(data: PowerRequest):
+    power = get_power_from_model(data.brand, data.model)
+
+    if not power:
+        return {
+            "found": False,
+            "message": "Model not found, please enter manually"
+        }
+
+    return {
+        "found": True,
+        "power_kw": power
+    }
+
+@router.post("/")
+def add_appliance(data: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+
+    appliance = Appliance(
+        user_id=current_user.id,
+        name=data["name"],
+        brand=data.get("brand"),
+        model=data.get("model"),
+        power_kw=data["power_kw"]
+    )
+
+    db.add(appliance)
+    db.commit()
+
+    return {"message": "Appliance added successfully"}
 
 
 @router.get("/")
@@ -23,6 +60,8 @@ def list_appliances(db: Session = Depends(get_db), current_user: User = Depends(
         {
             "id": a.id,
             "name": a.name,
+            "brand": a.brand,
+            "model": a.model,
             "power_kw": a.power_kw,
             "status": "ON" if a.is_on else "OFF"
         }

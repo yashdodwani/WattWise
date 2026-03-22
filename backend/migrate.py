@@ -125,6 +125,45 @@ def migrate_location_discom():
             print(f"❌ Location & discom migration failed: {e}")
             raise
 
+def migrate_appliances_table():
+    """Add brand and model columns to appliances table"""
+
+    with engine.connect() as connection:
+        # Check if columns already exist
+        result = connection.execute(
+            text("""
+                SELECT column_name FROM information_schema.columns 
+                WHERE table_name = 'appliances' AND column_name = 'brand'
+            """)
+        )
+
+        if result.fetchone():
+            print("✅ Appliance brand & model columns already exist!")
+            return
+
+        print("🔄 Adding brand and model columns to appliances table...")
+
+        try:
+            # Add brand column
+            connection.execute(text("""
+                ALTER TABLE appliances ADD COLUMN brand VARCHAR
+            """))
+            print("✅ Added brand column")
+
+            # Add model column
+            connection.execute(text("""
+                ALTER TABLE appliances ADD COLUMN model VARCHAR
+            """))
+            print("✅ Added model column")
+
+            connection.commit()
+            print("\n✅ Appliance migration completed!")
+
+        except Exception as e:
+            connection.rollback()
+            print(f"❌ Appliance migration failed: {e}")
+            raise
+
 
 if __name__ == "__main__":
     print("=" * 60)
@@ -138,6 +177,8 @@ if __name__ == "__main__":
         create_otp_table()
         print()
         migrate_location_discom()
+        print()
+        migrate_appliances_table()
         print()
         print("=" * 60)
         print("✅ DATABASE MIGRATION COMPLETE")

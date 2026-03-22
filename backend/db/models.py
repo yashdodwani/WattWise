@@ -61,6 +61,8 @@ class Appliance(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
 
     name = Column(String)
+    brand = Column(String, nullable=True)
+    model = Column(String, nullable=True)
     power_kw = Column(Float)
 
     is_on = Column(Boolean, default=False)
