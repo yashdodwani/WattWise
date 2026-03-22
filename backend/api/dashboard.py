@@ -117,8 +117,10 @@ def consumption_graph(
         .all()
     )
 
+    # Convert naive timestamps (stored as IST) to aware strings (+05:30)
+    # This prevents frontend 'UTC only' assumptions.
     return [
-        {"time": r.timestamp.isoformat(), "kwh": r.energy_kwh}
+        {"time": r.timestamp.replace(tzinfo=IST).isoformat(), "kwh": r.energy_kwh}
         for r in readings[-50:]
     ]
 
