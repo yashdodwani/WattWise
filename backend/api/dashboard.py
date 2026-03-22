@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 
 from db.session import get_db
 from db.models import MeterReading, Appliance, Tariff, Meter
@@ -55,15 +55,21 @@ def dashboard_summary(
       - predicted_bill     : today_kwh × avg rate (₹7/unit estimate)
       - active_devices     : appliances currently ON for this user
     """
-    latest = (
+    base_query = (
         db.query(MeterReading)
+        .join(Meter)
+        .filter(Meter.user_id == current_user.id)
+    )
+
+    latest = (
+        base_query
         .order_by(desc(MeterReading.timestamp))
         .first()
     )
 
     today_start = _midnight_ist()
     readings = (
-        db.query(MeterReading)
+        base_query
         .filter(MeterReading.timestamp >= today_start)
         .all()
     )
@@ -105,6 +111,8 @@ def consumption_graph(
     """
     readings = (
         db.query(MeterReading)
+        .join(Meter)
+        .filter(Meter.user_id == current_user.id)
         .order_by(MeterReading.timestamp)
         .all()
     )
@@ -168,9 +176,15 @@ def savings(
 
     Response: {"today_cost": 68.0, "savings_today": 12.0, "efficiency": 68}
     """
-    today_kwh = sum(
-        r.energy_kwh for r in db.query(MeterReading).all()
-    )
+    today_start = _midnight_ist()
+    
+    today_kwh = (
+        db.query(func.sum(MeterReading.energy_kwh))
+        .join(Meter)
+        .filter(Meter.user_id == current_user.id)
+        .filter(MeterReading.timestamp >= today_start)
+        .scalar()
+    ) or 0.0
 
     normal_cost    = today_kwh * 8
     optimized_cost = today_kwh * 6.8
@@ -201,6 +215,8 @@ def today_cost(
     today_start = _midnight_ist()
     readings = (
         db.query(MeterReading)
+        .join(Meter)
+        .filter(Meter.user_id == current_user.id)
         .filter(MeterReading.timestamp >= today_start)
         .all()
     )
