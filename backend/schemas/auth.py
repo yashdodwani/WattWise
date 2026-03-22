@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
+from uuid import UUID
 
 
 # ==================== REGISTRATION ====================
@@ -17,7 +18,7 @@ class CombinedRegistrationRequest(BaseModel):
 
 class RegisterWithTokenResponse(BaseModel):
     """Registration response with instant JWT token (no login required)"""
-    id: int
+    id: UUID
     name: str
     username: str
     phone_number: str
@@ -54,7 +55,7 @@ class TokenResponse(BaseModel):
     """JWT Token response"""
     access_token: str
     token_type: str = "bearer"
-    user_id: int
+    user_id: UUID
     username: str
 
 
@@ -81,7 +82,7 @@ class ResetPasswordRequest(BaseModel):
 # ==================== USER PROFILE ====================
 
 class UserProfile(BaseModel):
-    id: int
+    id: UUID
     name: str
     username: str
     phone_number: str

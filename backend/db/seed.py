@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from .models import User, Meter, Appliance, Tariff
 from datetime import time
+from uuid import UUID
+from utils.security import hash_password
 
 DEFAULT_APPLIANCES = [
     {"name": "Air Conditioner",   "power_kw": 1.45},
@@ -13,7 +15,7 @@ DEFAULT_APPLIANCES = [
     {"name": "Microwave",         "power_kw": 1.2},
 ]
 
-def seed_appliances_for_user(db: Session, user_id: int):
+def seed_appliances_for_user(db: Session, user_id: UUID):
     """Create default appliances + meter for a user if they don't have any yet."""
     # Create a meter for the user if none exists
     meter_exists = db.query(Meter).filter(Meter.user_id == user_id).first()
@@ -36,7 +38,15 @@ def seed_data(db: Session):
     if db.query(User).first():
         return
 
-    user = User(name="Demo User")
+    # Create demo user with all required fields
+    user = User(
+        name="Demo User",
+        username="demo",
+        password_hash=hash_password("demo123"),
+        phone_number="0000000000",
+        consumer_number="0000000000",
+        is_active=True
+    )
     db.add(user)
     db.commit()
     db.refresh(user)

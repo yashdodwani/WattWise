@@ -12,7 +12,7 @@ class NotificationService:
         self.db_factory = SessionLocal
         self.loop = asyncio.get_event_loop()
 
-    def create_notification(self, user_id: int, title: str, message: str, type: str = "general", priority: int = 0) -> Notification:
+    def create_notification(self, user_id: str, title: str, message: str, type: str = "general", priority: int = 0) -> Notification:
         db = self.db_factory()
         notif = Notification(
             user_id=user_id,
@@ -56,7 +56,7 @@ class NotificationService:
         db.close()
         return True
 
-    def fetch_for_user(self, user_id: int) -> List[Notification]:
+    def fetch_for_user(self, user_id: str) -> List[Notification]:
         db = self.db_factory()
         rows = db.query(Notification).filter(Notification.user_id == user_id).order_by(Notification.created_at.desc()).all()
         db.close()

@@ -20,6 +20,7 @@ from db.session import get_db
 from db.models import MeterReading, Appliance, Tariff, Meter
 from api.auth import get_current_user
 from services.tariff_service import calculate_today_cost
+from services.meter_simulator import generate_voltage, predicted_bill
 
 IST = ZoneInfo("Asia/Kolkata")
 
@@ -79,13 +80,24 @@ def dashboard_summary(
         .count()
     )
 
-    predicted_bill = round(today_kwh * 7, 2)
+    # predicted_bill = round(today_kwh * 7, 2)
+    # Use the more accurate tiered calculation from simulation logic
+    bill_amount = predicted_bill(today_kwh)
+
+    # Generate a realistic voltage value on the fly
+    voltage = generate_voltage()
+
+    # Calculate current load (kW) from latest 15-second energy reading
+    # Power (kW) = Energy (kWh) / Time (h)
+    # Time = 15s = 1/240 h  =>  Power = Energy * 240
+    current_load_kw = round(latest.energy_kwh * 240, 3) if latest else 0
 
     return {
-        "current_load_kw": round(latest.energy_kwh * 4, 2) if latest else 0,
-        "today_kwh": round(today_kwh, 2),
-        "predicted_bill": predicted_bill,
+        "current_load_kw": current_load_kw,
+        "today_kwh": round(today_kwh, 3),
+        "predicted_bill": round(bill_amount, 2),
         "active_devices": active_devices,
+        "voltage": voltage,
     }
 
 
@@ -109,8 +121,9 @@ def consumption_graph(
         .all()
     )
 
+    # Convert 15-second energy readings to average power (kW) for the graph
     return [
-        {"time": r.timestamp.isoformat(), "kwh": r.energy_kwh}
+        {"time": r.timestamp.isoformat(), "kwh": round(r.energy_kwh * 240, 3)}
         for r in readings[-50:]
     ]
 
