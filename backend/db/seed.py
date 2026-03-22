@@ -15,19 +15,21 @@ DEFAULT_APPLIANCES = [
 
 def seed_appliances_for_user(db: Session, user_id: int):
     """Create default appliances + meter for a user if they don't have any yet."""
-    existing = db.query(Appliance).filter(Appliance.user_id == user_id).first()
-    if existing:
-        return  # already seeded
-
     # Create a meter for the user if none exists
     meter_exists = db.query(Meter).filter(Meter.user_id == user_id).first()
     if not meter_exists:
         db.add(Meter(user_id=user_id))
+        db.commit()
 
-    for a in DEFAULT_APPLIANCES:
-        db.add(Appliance(user_id=user_id, name=a["name"], power_kw=a["power_kw"]))
+    # We no longer seed default appliances as users add them manually
+    # existing = db.query(Appliance).filter(Appliance.user_id == user_id).first()
+    # if existing:
+    #     return  # already seeded
 
-    db.commit()
+    # for a in DEFAULT_APPLIANCES:
+    #     db.add(Appliance(user_id=user_id, name=a["name"], power_kw=a["power_kw"]))
+
+    # db.commit()
 
 def seed_data(db: Session):
     # prevent reseeding
